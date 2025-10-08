@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exodus</title>
+  <link rel="stylesheet" href="../static/styles/style.css">
+  <link rel="icon" type="image" href="../static/assets/logo.png">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="menu-toggle">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <div>
+      <img class="logo" src="../static/assets/logo.png" alt="logo">
+    </div>
+    <ul class="nav-links">
+      <li><a href="../templates/albuns.html">Álbuns</a></li>
+      <li><a href="../templates/historico.html">Histórico</a></li>
+    </ul>
+  </nav>
+  <main>
+    <div class="server-input">
+      <li><input
+        id="serverUrl"
+        type="url"
+        inputmode="url"
+        placeholder="URL do servidor Flask (ex.: http://SEU-IP:5000)"
+        autocomplete="off"
+        spellcheck="false"
+      /></li>
+      <button id="connectBtn" type="button">Conectar</button>
+    </div>
+
+    <div class="background"></div>
+
+    <div>
+      <img class="radio" src="../static/assets/radio.svg" alt="radio">
+    </div>
+
+    <footer>
+      <div id="status" aria-live="polite"></div>
+      <ul id="songList"></ul>
+    </footer>
+  </main>
+
+  <div class="player">
+    <div class="now-playing" id="nowPlaying">Nada tocando</div>
+    <div class="custom-player">
+      <button class="play-pause" id="playPause" aria-label="Play/Pause">
+        <img id="playIcon" src="../static/assets/play.svg" alt="Play">
+        <img id="pauseIcon" src="../static/assets/pause.svg" alt="Pause" style="display:none;">
+      </button>
+      <input type="range" id="progress" value="0" min="0" step="1" aria-label="Progresso">
+      <span id="time" aria-live="polite">0:00</span>
+      <button id="volumeBtn" aria-label="Mostrar volume">
+        <img src="../static/assets/musica.svg" alt="Volume">
+      </button>
+      <input type="range" id="volume" min="0" max="1" step="0.1" value="1" aria-label="Volume">
+    </div>
+    <audio id="audio"></audio>
+  </div>
+
+  <div class="efeito">
+    <img class="balancar" src="../static/assets/efeito.svg" alt="efeito">
+  </div>
+
+  <script src="../app.js" defer></script>
+  <script>
+    // ====== JS original com correções de robustez e pequenos ajustes ======
+    const entradaUrlServidor = document.getElementById('serverUrl');
+    const botaoConectar = document.getElementById('connectBtn');
+    const elementoStatus = document.getElementById('status');
+    const listaMusicasEl = document.getElementById('songList');
+    const audioEl = document.getElementById('audio');
+
+    const urlSalva = localStorage.getItem('urlServidor') ?? localStorage.getItem('serverUrl');
+    if (urlSalva) entradaUrlServidor.value = urlSalva;
+
+    function juntarUrl(base, relativo) {
+      try {
+        return new URL(relativo, base).href;
+      } catch {
+        return base.replace(/\/+$/, '') + '/' + relativo.replace(/^\/+/, '');
+      }
+    }
+
+    async function buscarJSON(url) {
+      const resposta = await fetch(url);
+      if (!resposta.ok) throw new Error('HTTP ' + resposta.status);
+      return resposta.json();
+    }
+
+    function definirStatus(mensagem) {
+      if (elementoStatus) elementoStatus.textContent = mensagem;
+    }
+
+    botaoConectar.addEventListener('click', async () => {
+      const base = entradaUrlServidor.value.trim().replace(/\/$/, '');
+      if (!base) {
+        definirStatus('Informe a URL do servidor.');
+        return;
+      }
+      localStorage.setItem('urlServidor', base);
+      localStorage.setItem('serverUrl', base);
+      definirStatus('Conectando…');
+      try {
+        const saude = await buscarJSON(juntarUrl(base, '/api/saude'));
+        definirStatus('Conectado. ' + (saude.count ?? 0) + ' músicas disponíveis.');
+        const musicas = await buscarJSON(juntarUrl(base, '/api/musicas'));
+        renderizarMusicas(base, musicas);
+      } catch (erro) {
+        definirStatus('Falha ao conectar. Verifique a URL e a rede.');
+        console.error(erro);
+      }
+    });
+
+    entradaUrlServidor.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        botaoConectar.click();
+      }
+    });
+
+    function renderizarMusicas(base, musicas) {
+      listaMusicasEl.innerHTML = '';
+      if (!Array.isArray(musicas) || !musicas.length) {
+        listaMusicasEl.innerHTML = '<li>Nenhuma música encontrada no servidor.</li>';
+        return;
+      }
+      musicas.forEach((musica) => {
+        const li = document.createElement('li');
+
+        const blocoMeta = document.createElement('div');
+        blocoMeta.className = 'meta';
+
+        const tituloEl = document.createElement('div');
+        tituloEl.className = 'title';
+        tituloEl.textContent = musica.title || '(Sem título)';
+
+        const artistaEl = document.createElement('div');
+        artistaEl.className = 'artist';
+        artistaEl.textContent = musica.artist || 'Desconhecido';
+
+        blocoMeta.appendChild(tituloEl);
+        blocoMeta.appendChild(artistaEl);
+
+        const botaoTocar = document.createElement('button');
+        botaoTocar.textContent = 'Tocar';
+        botaoTocar.addEventListener('click', () => tocarMusica(base, musica));
+
+        li.appendChild(blocoMeta);
+        li.appendChild(botaoTocar);
+        listaMusicasEl.appendChild(li);
+      });
+    }
+
+    const tocandoAgoraEl = document.getElementById('nowPlaying');
+    const volumeBtn = document.getElementById('volumeBtn');
+    const volumeSlider = document.getElementById('volume');
+    const playPauseBtn = document.getElementById('playPause');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+    const progress = document.getElementById('progress');
+    const time = document.getElementById('time');
+
+    function tocarMusica(base, musica) {
+      const url = musica.url?.startsWith('http') ? musica.url : juntarUrl(base, musica.url);
+      audioEl.src = url;
+      audioEl.play().catch(console.error);
+      if (tocandoAgoraEl) tocandoAgoraEl.textContent = `Tocando: ${musica.title || '(Sem título)'} — ${musica.artist || 'Desconhecido'}`;
+
+      let history = JSON.parse(localStorage.getItem('history') || '[]');
+      history.push({
+        title: musica.title || '(Sem título)',
+        artist: musica.artist || 'Desconhecido',
+        url,
+        time: new Date().toLocaleString('pt-BR')
+      });
+      localStorage.setItem('history', JSON.stringify(history));
+    }
+
+    volumeBtn.addEventListener('click', () => {
+      const expanded = volumeSlider.getAttribute('aria-expanded') === 'true';
+      volumeSlider.setAttribute('aria-expanded', String(!expanded));
+    });
+
+    volumeSlider.addEventListener('input', () => {
+      audioEl.volume = volumeSlider.value;
+    });
+
+    //Volume (toggle exibir/ocultar slider)
+    volumeBtn.addEventListener('click', () => {
+    if (volumeSlider.style.display === 'none' || volumeSlider.style.display === '') {
+        volumeSlider.style.display = 'block';
+    } else {
+        volumeSlider.style.display = 'none';
+    }
+    });
+
+    // Controle de volume
+    volumeSlider.addEventListener('input', () => {
+    audioEl.volume = volumeSlider.value;
+    });
+
+    playPauseBtn.addEventListener('click', () => {
+      if (audioEl.paused) {
+        audioEl.play().catch(console.error);
+      } else {
+        audioEl.pause();
+      }
+    });
+
+    audioEl.addEventListener('play', () => {
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'inline';
+    });
+
+    audioEl.addEventListener('pause', () => {
+      playIcon.style.display = 'inline';
+      pauseIcon.style.display = 'none';
+    });
+
+    audioEl.addEventListener('timeupdate', () => {
+      if (!isFinite(audioEl.duration)) return;
+      progress.max = audioEl.duration || 0;
+      progress.value = audioEl.currentTime || 0;
+      const minutes = Math.floor((audioEl.currentTime || 0) / 60);
+      const seconds = Math.floor((audioEl.currentTime || 0) % 60).toString().padStart(2, '0');
+      time.textContent = `${minutes}:${seconds}`;
+    });
+
+    progress.addEventListener('input', () => {
+      const v = Number(progress.value);
+      if (!Number.isNaN(v)) audioEl.currentTime = v;
+    });
+
+    const toggle = document.querySelector('.menu-toggle');
+    const navLinks = document.querySelector('.nav-links');
+    toggle.addEventListener('click', () => {
+      toggle.classList.toggle('active');
+      navLinks.classList.toggle('active');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Albuns</title>
+    <link rel="stylesheet" href="../static/styles/style.css">
+    <link rel="icon" type="image" href="../static/assets/logo.png">
+</head>
+<body>
+    <nav class="navbar">
+      <div class="menu-toggle">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div>
+        <img class="logo" src="../static/assets/logo.png" alt="logo">
+      </div>
+      <ul class="nav-links">
+        <li><a href="../templates/index.html">Início</a></li>
+        <li><a href="../templates/historico.html">Histórico</a></li>
+      </ul>
+    </nav>
+
+    <img class="fundo_album" src="../static/assets/fundo_album.png" alt="fundo">
+
+    <img class="camera" src="../static/assets/camera.svg" alt="camera">
+
+    <img class="xg" src="../static/assets/xg.svg" alt="xg">
+    <h1 class="title_xg">Awe - xg</h1>
+    <h1 class="title_ano">2024</h1>
+
+    <img class="miley" src="../static/assets/miley.svg" alt="miley">
+    <h1 class="title_miley">Plastic Hearts <br> - Miley Cyrus</h1>
+    <h1 class="title_mano">2020</h1>
+
+    <img class="falling" src="../static/assets/falling.svg" alt="falling">
+    <h1 class="title_falling">The Drug in Me Is You <br> - Falling In Reverse</h1>
+    <h1 class="title_fano">2011</h1>
+
+    <img class="lauryn" src="../static/assets/lauryn.svg" alt="lauryn">
+    <h1 class="title_lau">The Miseducation of Lauryn Hill <br> - Lauryn Hill</h1>
+    <h1 class="title_lano">1998</h1>
+    
+</body>
+
+    <script>
+        const toggle = document.querySelector(".menu-toggle");
+        const navLinks = document.querySelector(".nav-links");
+
+        toggle.addEventListener("click", () => {
+            toggle.classList.toggle("active");
+            navLinks.classList.toggle("active");
+        });
+    </script>
+</html>
